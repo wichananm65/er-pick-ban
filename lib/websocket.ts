@@ -1,8 +1,6 @@
-/**
- * lib/api/websocket.ts
- * WebSocket client for real-time communication with the backend server
- */
-
+// ======================================
+// lib/websocket.ts - WebSocket Client
+// ======================================
 export type MessageType = 
   | 'init-room'
   | 'join-room'
@@ -37,6 +35,7 @@ class WebSocketClient {
   private isIntentionallyClosed = false;
 
   constructor() {
+<<<<<<< HEAD:lib/api/websocket.ts
     // Prefer explicit environment URL when provided at build/runtime.
     // Check common places: process.env (Next.js will inline NEXT_PUBLIC_* at build time)
     // and a possible global on window (in case the runtime injected it).
@@ -49,11 +48,17 @@ class WebSocketClient {
       envUrl = undefined;
     }
 
+=======
+    // Determine WebSocket URL. Prefer explicit env var `NEXT_PUBLIC_WS_URL`.
+    const env = (typeof process !== 'undefined' && process.env) ? (process.env as unknown as Record<string, string | undefined>) : undefined;
+    const envUrl = env ? env.NEXT_PUBLIC_WS_URL : undefined;
+>>>>>>> parent of cb7287d (Updated):lib/websocket.ts
     if (envUrl) {
       this.url = envUrl;
       return;
     }
 
+    // Default to backend running on port 3001 (separate from Next.js dev server)
     if (typeof window !== 'undefined') {
       // Build a same-origin websocket URL using host (includes port when present)
       const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -111,7 +116,7 @@ class WebSocketClient {
 
     this.reconnectAttempts++;
     console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-
+    
     setTimeout(() => {
       this.connect().catch(err => {
         console.error('Reconnect failed:', err);
@@ -132,6 +137,7 @@ class WebSocketClient {
     }
     this.messageHandlers.get(type)!.push(handler);
 
+    // Return unsubscribe function
     return () => {
       const handlers = this.messageHandlers.get(type);
       if (handlers) {

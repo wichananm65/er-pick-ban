@@ -13,8 +13,11 @@
   },
   "dependencies": {
     "express": "^4.18.2",
+<<<<<<< HEAD
     "firebase": "^12.6.0",
     "lowdb": "^3.0.0",
+=======
+>>>>>>> parent of cb7287d (Updated)
     "lucide-react": "^0.553.0",
     "next": "16.0.3",
     "react": "19.2.0",

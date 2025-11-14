@@ -11,12 +11,15 @@ importers:
       express:
         specifier: ^4.18.2
         version: 4.21.2
+<<<<<<< HEAD
       firebase:
         specifier: ^12.6.0
         version: 12.6.0
       lowdb:
         specifier: ^3.0.0
         version: 3.0.0
+=======
+>>>>>>> parent of cb7287d (Updated)
       lucide-react:
         specifier: ^0.553.0
         version: 0.553.0(react@19.2.0)
@@ -1870,10 +1873,6 @@ packages:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
 
-  lowdb@3.0.0:
-    resolution: {integrity: sha512-9KZRulmIcU8fZuWiaM0d5e2/nPnrFyXkeXVpqT+MJS+vgbgOf1EbtvgQmba8HwUFgDl1oeZR6XqEJnkJmQdKmg==}
-    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
-
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
@@ -2257,10 +2256,6 @@ packages:
   statuses@2.0.1:
     resolution: {integrity: sha512-RwNA9Z/7PrK06rYLIzFMlaF+l73iwpzsqRIFgbMLbTcLD6cOao82TaWefPXQvB2fOC4AjuYSEndS7N/mTCbkdQ==}
     engines: {node: '>= 0.8'}
-
-  steno@2.1.0:
-    resolution: {integrity: sha512-mauOsiaqTNGFkWqIfwcm3y/fq+qKKaIWf1vf3ocOuTdco9XoHCO2AGF1gFYXuZFSWuP38Q8LBHBGJv2KnJSXyA==}
-    engines: {node: ^14.13.1 || >=16.0.0}
 
   stop-iteration-iterator@1.1.0:
     resolution: {integrity: sha512-eLoXW/DHyl62zxY4SCaIgnRhuMr6ri4juEYARS8E6sCEqzKpOiE521Ucofdx+KnDZl5xmvGYaaKCk5FEOxJCoQ==}
@@ -4597,10 +4592,6 @@ snapshots:
     dependencies:
       js-tokens: 4.0.0
 
-  lowdb@3.0.0:
-    dependencies:
-      steno: 2.1.0
-
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
@@ -5043,8 +5034,6 @@ snapshots:
   stable-hash@0.0.5: {}
 
   statuses@2.0.1: {}
-
-  steno@2.1.0: {}
 
   stop-iteration-iterator@1.1.0:
     dependencies:
