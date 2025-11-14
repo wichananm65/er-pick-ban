@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "concurrently \"next dev\" \"node server.mjs\"",
     "build": "next build",
-    "start": "node server.mjs & next start",
+    "start": "next start",
     "lint": "eslint",
     "server": "node server.mjs"
   },
