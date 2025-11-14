@@ -30,7 +30,7 @@ export default function Menu({ onCreateRoom, onJoinRoom }: MenuProps) {
       await initializeRoom(code);
       await registerPlayer(code, 'left');
       onCreateRoom(code, 'left');
-    } catch (err) {
+    } catch {
       setError('ไม่สามารถสร้างห้องได้ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setLoading(false);
@@ -61,7 +61,7 @@ export default function Menu({ onCreateRoom, onJoinRoom }: MenuProps) {
       await registerPlayer(code, 'right');
       setError('');
       onJoinRoom(code, 'right');
-    } catch (err) {
+    } catch {
       setError('ไม่สามารถเข้าร่วมห้องได้ กรุณาตรวจสอบรหัสห้อง');
     } finally {
       setLoading(false);
@@ -85,7 +85,7 @@ export default function Menu({ onCreateRoom, onJoinRoom }: MenuProps) {
       
       setError('');
       onJoinRoom(code, 'spectator');
-    } catch (err) {
+    } catch {
       setError('ไม่สามารถดูการแข่งขันได้ กรุณาตรวจสอบรหัสห้อง');
     } finally {
       setLoading(false);
@@ -93,7 +93,7 @@ export default function Menu({ onCreateRoom, onJoinRoom }: MenuProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold text-white mb-2">Pick & Ban System</h1>
@@ -108,7 +108,7 @@ export default function Menu({ onCreateRoom, onJoinRoom }: MenuProps) {
           <button
             onClick={handleCreateRoom}
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-lg transition-all transform hover:scale-105 shadow-lg"
+            className="w-full bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-lg transition-all transform hover:scale-105 shadow-lg"
           >
             <Users className="inline mr-2" size={20} />
             {loading ? 'กำลังสร้างห้อง...' : 'สร้างห้อง (เป็นฝั่งซ้าย)'}
@@ -130,7 +130,7 @@ export default function Menu({ onCreateRoom, onJoinRoom }: MenuProps) {
             
             {error && (
               <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 flex items-start">
-                <AlertCircle className="text-red-400 mr-2 flex-shrink-0 mt-0.5" size={18} />
+                <AlertCircle className="text-red-400 mr-2 shrink-0 mt-0.5" size={18} />
                 <p className="text-red-300 text-sm">{error}</p>
               </div>
             )}
@@ -138,7 +138,7 @@ export default function Menu({ onCreateRoom, onJoinRoom }: MenuProps) {
             <button
               onClick={handleJoinRoom}
               disabled={!inputCode.trim() || loading}
-              className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-all"
+              className="w-full bg-linear-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-all"
             >
               {loading ? 'กำลังเข้าร่วม...' : 'เข้าร่วมห้อง (เป็นฝั่งขวา)'}
             </button>
@@ -146,7 +146,7 @@ export default function Menu({ onCreateRoom, onJoinRoom }: MenuProps) {
             <button
               onClick={handleSpectateRoom}
               disabled={!inputCode.trim() || loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-all"
+              className="w-full bg-linear-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-all"
             >
               <Eye className="inline mr-2" size={18} />
               {loading ? 'กำลังเข้าดู...' : 'ดูการแข่งขัน (Spectator)'}

@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Copy, Check, Eye } from 'lucide-react';
 import { heroes, phases } from '@/lib/gameData';
 import { loadGameState, saveGameState } from '@/lib/storage';
+import { wsClient } from '@/lib/websocket';
 import type { Side } from './PickBanGame';
 import TeamPanel from './TeamPanel';
 import HeroGrid from './HeroGrid';
@@ -27,38 +28,68 @@ export default function GameRoom({ roomCode, userSide, onExit }: GameRoomProps) 
   const [rightPicks, setRightPicks] = useState<number[]>([]);
   const [copied, setCopied] = useState(false);
 
-  // Load initial game state
+  // Load initial game state and setup WebSocket listeners
   useEffect(() => {
-    const loadInitialState = async () => {
-      const state = await loadGameState(roomCode);
-      if (state) {
-        setCurrentPhase(state.currentPhase);
-        setActionCount(state.actionCount);
-        setLeftBans(state.leftBans);
-        setRightBans(state.rightBans);
-        setLeftPicks(state.leftPicks);
-        setRightPicks(state.rightPicks);
+    const setupRoom = async () => {
+      try {
+        // Connect WebSocket
+        await wsClient.connect();
+
+        // Load initial state
+        const state = await loadGameState(roomCode);
+        if (state) {
+          setCurrentPhase(state.currentPhase);
+          setActionCount(state.actionCount);
+          setLeftBans(state.leftBans);
+          setRightBans(state.rightBans);
+          setLeftPicks(state.leftPicks);
+          setRightPicks(state.rightPicks);
+        }
+      } catch (err) {
+        console.error('Failed to setup room:', err);
       }
     };
-    loadInitialState();
+
+    setupRoom();
   }, [roomCode]);
 
-  // Poll for game state updates
+  // Listen for real-time state updates from WebSocket
   useEffect(() => {
-    const pollInterval = setInterval(async () => {
-      const state = await loadGameState(roomCode);
-      if (state) {
-        setCurrentPhase(state.currentPhase);
-        setActionCount(state.actionCount);
-        setLeftBans(state.leftBans);
-        setRightBans(state.rightBans);
-        setLeftPicks(state.leftPicks);
-        setRightPicks(state.rightPicks);
+    const handleStateUpdate = (message: Record<string, unknown>) => {
+      const roomState = message.roomState as unknown as Record<string, unknown>;
+      if (roomState) {
+        setCurrentPhase(roomState.currentPhase as number);
+        setActionCount(roomState.actionCount as number);
+        setLeftBans(roomState.leftBans as number[]);
+        setRightBans(roomState.rightBans as number[]);
+        setLeftPicks(roomState.leftPicks as number[]);
+        setRightPicks(roomState.rightPicks as number[]);
       }
-    }, 1000); // Poll every 1 second
+    };
 
-    return () => clearInterval(pollInterval);
-  }, [roomCode]);
+    const handlePlayerJoined = (message: Record<string, unknown>) => {
+      const side = message.side as string;
+      console.log(`Player joined: ${side}`);
+      const roomState = message.roomState as unknown as Record<string, unknown>;
+      if (roomState) {
+        setCurrentPhase(roomState.currentPhase as number);
+        setActionCount(roomState.actionCount as number);
+        setLeftBans(roomState.leftBans as number[]);
+        setRightBans(roomState.rightBans as number[]);
+        setLeftPicks(roomState.leftPicks as number[]);
+        setRightPicks(roomState.rightPicks as number[]);
+      }
+    };
+
+    // Subscribe to WebSocket events
+    const unsubscribeStateUpdate = wsClient.on('state-updated', handleStateUpdate as unknown as (message: Record<string, unknown>) => void);
+    const unsubscribePlayerJoined = wsClient.on('player-joined', handlePlayerJoined as unknown as (message: Record<string, unknown>) => void);
+
+    return () => {
+      unsubscribeStateUpdate();
+      unsubscribePlayerJoined();
+    };
+  }, []);
 
   const copyRoomCode = () => {
     navigator.clipboard.writeText(roomCode);
@@ -156,7 +187,7 @@ export default function GameRoom({ roomCode, userSide, onExit }: GameRoomProps) 
   const isGameOver = currentPhase >= phases.length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
+    <div className="min-h-screen bg-linear-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4 flex flex-col sm:flex-row items-center justify-between gap-4">

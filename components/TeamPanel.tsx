@@ -24,7 +24,7 @@ export default function TeamPanel({ side, bans, picks }: TeamPanelProps) {
       
       <div className="mb-4">
         <h4 className="text-sm font-semibold text-gray-400 mb-2">แบน ({bans.length}):</h4>
-        <div className="flex flex-wrap gap-2 min-h-[2rem]">
+        <div className="flex flex-wrap gap-2 min-h-8">
           {bans.map((id) => {
             const hero = heroes.find(h => h.id === id);
             return (
@@ -38,7 +38,7 @@ export default function TeamPanel({ side, bans, picks }: TeamPanelProps) {
       
       <div>
         <h4 className="text-sm font-semibold text-gray-400 mb-2">เลือก ({picks.length}):</h4>
-        <div className="flex flex-wrap gap-2 min-h-[2rem]">
+        <div className="flex flex-wrap gap-2 min-h-8">
           {picks.map((id) => {
             const hero = heroes.find(h => h.id === id);
             return (

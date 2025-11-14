@@ -1,15 +1,8 @@
 // ======================================
-// lib/storage.ts
+// lib/storage.ts - WebSocket-based Storage
 // ======================================
-declare global {
-  interface Window {
-    storage: {
-      get(key: string, secure?: boolean): Promise<{ value: string } | null>;
-      set(key: string, value: string, secure?: boolean): Promise<void>;
-      remove?(key: string, secure?: boolean): Promise<void>;
-    };
-  }
-}
+import { wsClient } from './websocket';
+import type { WSMessage } from './websocket';
 
 export interface GameState {
   currentPhase: number;
@@ -20,80 +13,123 @@ export interface GameState {
   rightPicks: number[];
 }
 
-// Check if storage API is available
-const isStorageAvailable = () => {
-  return typeof window !== 'undefined' && window.storage;
+// Promise-based message handling for request-response pattern
+const waitForMessage = (type: string, timeout = 5000): Promise<WSMessage> => {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      unsubscribe();
+      reject(new Error(`Timeout waiting for ${type}`));
+    }, timeout);
+
+    const unsubscribe = wsClient.on(type as unknown as 'init-room', (message) => {
+      clearTimeout(timer);
+      unsubscribe();
+      resolve(message);
+    });
+  });
 };
 
 // Initialize room with default game state
 export const initializeRoom = async (roomCode: string): Promise<void> => {
-  if (!isStorageAvailable()) return;
-  
-  const initialState: GameState = {
-    currentPhase: 0,
-    actionCount: 0,
-    leftBans: [],
-    rightBans: [],
-    leftPicks: [],
-    rightPicks: []
-  };
-  
   try {
-    await window.storage.set(`room:${roomCode}`, JSON.stringify(initialState), true);
+    // Ensure WebSocket is connected
+    if (!wsClient.isConnected()) {
+      await wsClient.connect();
+    }
+
+    wsClient.send({
+      type: 'init-room',
+      roomCode,
+    });
+
+    // Wait for confirmation
+    await waitForMessage('room-initialized');
+    console.log(`Room ${roomCode} initialized`);
   } catch (err) {
     console.error('Failed to initialize room:', err);
+    throw err;
   }
 };
 
 // Load game state from storage
 export const loadGameState = async (roomCode: string): Promise<GameState | null> => {
-  if (!isStorageAvailable()) return null;
-  
   try {
-    const result = await window.storage.get(`room:${roomCode}`, true);
-    if (result) {
-      return JSON.parse(result.value);
+    if (!wsClient.isConnected()) {
+      await wsClient.connect();
     }
+
+    wsClient.send({
+      type: 'get-room-state',
+      roomCode,
+    });
+
+    const response = await waitForMessage('room-state');
+    const roomState = response.roomState as unknown as GameState;
+    return roomState;
   } catch (err) {
-    console.log('No existing game state');
+    console.log('Failed to load game state:', err);
+    return null;
   }
-  return null;
 };
 
 // Save game state to storage
 export const saveGameState = async (roomCode: string, state: GameState): Promise<void> => {
-  if (!isStorageAvailable()) return;
-  
   try {
-    await window.storage.set(`room:${roomCode}`, JSON.stringify(state), true);
+    if (!wsClient.isConnected()) {
+      await wsClient.connect();
+    }
+
+    wsClient.send({
+      type: 'update-state',
+      roomCode,
+      state: state as unknown as Record<string, unknown>,
+    });
+
+    console.log(`Game state saved for room ${roomCode}`);
   } catch (err) {
     console.error('Failed to save game state:', err);
+    throw err;
   }
 };
 
 // Check room capacity
 export const checkRoomCapacity = async (roomCode: string): Promise<{ hasLeft: boolean; hasRight: boolean }> => {
-  if (!isStorageAvailable()) return { hasLeft: false, hasRight: false };
-  
   try {
-    const leftPlayer = await window.storage.get(`room:${roomCode}:left`, true);
-    const rightPlayer = await window.storage.get(`room:${roomCode}:right`, true);
+    if (!wsClient.isConnected()) {
+      await wsClient.connect();
+    }
+
+    wsClient.send({
+      type: 'check-room-capacity',
+      roomCode,
+    });
+
+    const response = await waitForMessage('capacity-check');
     return {
-      hasLeft: !!leftPlayer,
-      hasRight: !!rightPlayer
+      hasLeft: response.hasLeft as boolean,
+      hasRight: response.hasRight as boolean,
     };
   } catch (err) {
+    console.error('Failed to check room capacity:', err);
     return { hasLeft: false, hasRight: false };
   }
 };
 
 // Register player in room
 export const registerPlayer = async (roomCode: string, side: 'left' | 'right'): Promise<boolean> => {
-  if (!isStorageAvailable()) return false;
-  
   try {
-    await window.storage.set(`room:${roomCode}:${side}`, Date.now().toString(), true);
-    return true;
+    if (!wsClient.isConnected()) {
+      await wsClient.connect();
+    }
+
+    wsClient.send({
+      type: 'join-room',
+      roomCode,
+      side,
+    });
+
+    const response = await waitForMessage('room-joined', 5000);
+    return response.type === 'room-joined';
   } catch (err) {
     console.error('Failed to register player:', err);
     return false;
