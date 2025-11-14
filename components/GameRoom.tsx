@@ -1,9 +1,12 @@
+// ======================================
 // components/GameRoom.tsx
+// ======================================
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Copy, Check, Eye } from 'lucide-react';
-import { heroes, phases } from '../lib/gameData';
+import { heroes, phases } from '@/lib/gameData';
+import { loadGameState, saveGameState } from '@/lib/storage';
 import type { Side } from './PickBanGame';
 import TeamPanel from './TeamPanel';
 import HeroGrid from './HeroGrid';
@@ -24,13 +27,46 @@ export default function GameRoom({ roomCode, userSide, onExit }: GameRoomProps) 
   const [rightPicks, setRightPicks] = useState<number[]>([]);
   const [copied, setCopied] = useState(false);
 
+  // Load initial game state
+  useEffect(() => {
+    const loadInitialState = async () => {
+      const state = await loadGameState(roomCode);
+      if (state) {
+        setCurrentPhase(state.currentPhase);
+        setActionCount(state.actionCount);
+        setLeftBans(state.leftBans);
+        setRightBans(state.rightBans);
+        setLeftPicks(state.leftPicks);
+        setRightPicks(state.rightPicks);
+      }
+    };
+    loadInitialState();
+  }, [roomCode]);
+
+  // Poll for game state updates
+  useEffect(() => {
+    const pollInterval = setInterval(async () => {
+      const state = await loadGameState(roomCode);
+      if (state) {
+        setCurrentPhase(state.currentPhase);
+        setActionCount(state.actionCount);
+        setLeftBans(state.leftBans);
+        setRightBans(state.rightBans);
+        setLeftPicks(state.leftPicks);
+        setRightPicks(state.rightPicks);
+      }
+    }, 1000); // Poll every 1 second
+
+    return () => clearInterval(pollInterval);
+  }, [roomCode]);
+
   const copyRoomCode = () => {
     navigator.clipboard.writeText(roomCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleHeroClick = (heroId: number) => {
+  const handleHeroClick = async (heroId: number) => {
     if (userSide === 'spectator') return;
     if (currentPhase >= phases.length) return;
 
@@ -42,30 +78,65 @@ export default function GameRoom({ roomCode, userSide, onExit }: GameRoomProps) 
     
     if (allBanned.includes(heroId) || allPicked.includes(heroId)) return;
 
+    let newLeftBans = leftBans;
+    let newRightBans = rightBans;
+    let newLeftPicks = leftPicks;
+    let newRightPicks = rightPicks;
+
     if (phase.action === 'ban') {
       if (phase.side === 'left') {
-        setLeftBans([...leftBans, heroId]);
+        newLeftBans = [...leftBans, heroId];
       } else {
-        setRightBans([...rightBans, heroId]);
+        newRightBans = [...rightBans, heroId];
       }
     } else {
       if (phase.side === 'left') {
-        setLeftPicks([...leftPicks, heroId]);
+        newLeftPicks = [...leftPicks, heroId];
       } else {
-        setRightPicks([...rightPicks, heroId]);
+        newRightPicks = [...rightPicks, heroId];
       }
     }
 
     const newCount = actionCount + 1;
-    setActionCount(newCount);
+    let newPhase = currentPhase;
+    let finalCount = newCount;
 
     if (newCount >= phase.count) {
-      setCurrentPhase(currentPhase + 1);
-      setActionCount(0);
+      newPhase = currentPhase + 1;
+      finalCount = 0;
     }
+
+    // Save to storage immediately
+    await saveGameState(roomCode, {
+      currentPhase: newPhase,
+      actionCount: finalCount,
+      leftBans: newLeftBans,
+      rightBans: newRightBans,
+      leftPicks: newLeftPicks,
+      rightPicks: newRightPicks
+    });
+
+    // Update local state
+    setLeftBans(newLeftBans);
+    setRightBans(newRightBans);
+    setLeftPicks(newLeftPicks);
+    setRightPicks(newRightPicks);
+    setActionCount(finalCount);
+    setCurrentPhase(newPhase);
   };
 
-  const resetGame = () => {
+  const resetGame = async () => {
+    const newState = {
+      currentPhase: 0,
+      actionCount: 0,
+      leftBans: [],
+      rightBans: [],
+      leftPicks: [],
+      rightPicks: []
+    };
+    
+    await saveGameState(roomCode, newState);
+    
     setCurrentPhase(0);
     setActionCount(0);
     setLeftBans([]);
@@ -88,13 +159,14 @@ export default function GameRoom({ roomCode, userSide, onExit }: GameRoomProps) 
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4 flex items-center justify-between">
+        <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-4">
             <h2 className="text-xl font-bold text-white">รหัสห้อง:</h2>
             <code className="bg-gray-900 text-blue-400 px-4 py-2 rounded text-lg font-mono">{roomCode}</code>
             <button
               onClick={copyRoomCode}
               className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded transition-colors"
+              title="คัดลอกรหัสห้อง"
             >
               {copied ? <Check size={20} /> : <Copy size={20} />}
             </button>
@@ -127,6 +199,7 @@ export default function GameRoom({ roomCode, userSide, onExit }: GameRoomProps) 
           actionCount={actionCount}
           isGameOver={isGameOver}
           onReset={resetGame}
+          userSide={userSide}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

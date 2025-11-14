@@ -1,8 +1,10 @@
+// ======================================
 // components/HeroGrid.tsx
+// ======================================
 'use client';
 
 import React from 'react';
-import type { Hero } from '../lib/gameData';
+import type { Hero } from '@/lib/gameData';
 
 interface HeroGridProps {
   heroes: Hero[];
