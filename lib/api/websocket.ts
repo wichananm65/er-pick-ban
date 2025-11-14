@@ -37,19 +37,30 @@ class WebSocketClient {
   private isIntentionallyClosed = false;
 
   constructor() {
-    const env = (typeof process !== 'undefined' && process.env) ? (process.env as unknown as Record<string, string | undefined>) : undefined;
-    const envUrl = env ? env.NEXT_PUBLIC_WS_URL : undefined;
+    // Prefer explicit environment URL when provided at build/runtime.
+    // Check common places: process.env (Next.js will inline NEXT_PUBLIC_* at build time)
+    // and a possible global on window (in case the runtime injected it).
+    let envUrl: string | undefined;
+    try {
+      // process.env.NEXT_PUBLIC_WS_URL is replaced by Next at build time when set
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      envUrl = (process as any)?.env?.NEXT_PUBLIC_WS_URL || (typeof window !== 'undefined' ? (window as any).__NEXT_PUBLIC_WS_URL : undefined);
+    } catch (e) {
+      envUrl = undefined;
+    }
+
     if (envUrl) {
       this.url = envUrl;
       return;
     }
 
     if (typeof window !== 'undefined') {
+      // Build a same-origin websocket URL using host (includes port when present)
       const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const host = window.location.hostname;
-      const port = ':3001';
-      this.url = `${protocol}://${host}${port}/ws`;
+      const host = window.location.host; // hostname[:port]
+      this.url = `${protocol}://${host}/ws`;
     } else {
+      // Default for server-side or local node usage
       this.url = 'ws://localhost:3001/ws';
     }
   }

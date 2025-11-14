@@ -151,32 +151,6 @@
       "createdAt": 1763147512641
     },
     {
-      "code": "LQ6MT1",
-      "ownerSide": "left",
-      "state": {
-        "currentPhase": 5,
-        "actionCount": 1,
-        "leftBans": [
-          1,
-          4,
-          14
-        ],
-        "rightBans": [
-          5,
-          2
-        ],
-        "leftPicks": [
-          10,
-          11
-        ],
-        "rightPicks": [
-          6,
-          9
-        ]
-      },
-      "createdAt": 1763148657569
-    },
-    {
       "code": "TIPKMP",
       "ownerSide": "left",
       "state": {
