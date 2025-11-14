@@ -2,16 +2,69 @@
 // server.mjs - Real-time Pick/Ban Server (ESM)
 // ======================================
 import express from 'express';
-import WebSocket from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 import http from 'http';
+import { LowSync, JSONFileSync } from 'lowdb';
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server, path: '/ws' });
+const wss = new WebSocketServer({ server, path: '/ws' });
 
-// In-memory storage for rooms
+// In-memory storage for active rooms (mirrors DB for fast access)
 const rooms = new Map();
 const playerConnections = new Map(); // playerSide+roomCode -> ws connection
+
+// Lightweight JSON DB using lowdb (no native bindings)
+const adapter = new JSONFileSync('./rooms.json');
+const db = new LowSync(adapter);
+db.read();
+if (!db.data) db.data = { rooms: [] };
+
+const roomClients = new Map(); // roomCode -> Set(ws)
+
+function createRoomInDb(code, ownerSide, state = {}) {
+  db.read();
+  if (!db.data) db.data = { rooms: [] };
+  const existing = db.data.rooms.find(r => r.code === code);
+  const now = Date.now();
+  if (!existing) {
+    db.data.rooms.push({ code, ownerSide, state: state || {}, createdAt: now });
+  } else {
+    existing.ownerSide = ownerSide;
+    existing.state = state || existing.state;
+  }
+  db.write();
+}
+
+function getRoomFromDb(code) {
+  db.read();
+  if (!db.data) db.data = { rooms: [] };
+  const row = db.data.rooms.find(r => r.code === code);
+  if (!row) return null;
+  return { code: row.code, ownerSide: row.ownerSide, state: row.state || {}, createdAt: row.createdAt };
+}
+
+function updateRoomStateInDb(code, state = {}) {
+  db.read();
+  if (!db.data) db.data = { rooms: [] };
+  const row = db.data.rooms.find(r => r.code === code);
+  if (!row) return;
+  row.state = state || {};
+  db.write();
+}
+
+function deleteRoomFromDb(code) {
+  db.read();
+  if (!db.data) db.data = { rooms: [] };
+  db.data.rooms = db.data.rooms.filter(r => r.code !== code);
+  db.write();
+}
+
+function listRoomsFromDb() {
+  db.read();
+  if (!db.data) db.data = { rooms: [] };
+  return (db.data.rooms || []).slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
 
 // Room state interface
 class Room {
@@ -75,6 +128,18 @@ function cleanupConnection(ws) {
       if (room) {
         if (side === 'left') {
           room.leftPlayer = null;
+          // if the disconnected player was the owner, delete room from DB and notify
+          if (ws._isOwner) {
+            deleteRoomFromDb(roomCode);
+            // notify remaining participants
+            const participants = [room.leftPlayer, room.rightPlayer, ...room.spectators].filter(Boolean);
+            participants.forEach(p => {
+              try { p.send(JSON.stringify({ type: 'room-closed', roomCode })); } catch {}
+              try { p.close(); } catch {}
+            });
+            rooms.delete(roomCode);
+            break;
+          }
         } else if (side === 'right') {
           room.rightPlayer = null;
         } else if (side.startsWith('spectator')) {
@@ -92,6 +157,7 @@ function cleanupConnection(ws) {
         if (!room.leftPlayer && !room.rightPlayer && room.spectators.size === 0) {
           setTimeout(() => {
             if (!room.leftPlayer && !room.rightPlayer && room.spectators.size === 0) {
+              // remove from memory, keep DB until owner explicitly leaves
               rooms.delete(roomCode);
             }
           }, 300000); // 5 minutes
@@ -165,6 +231,11 @@ function handleInitRoom(ws, message) {
   room.leftPlayer = ws;
   rooms.set(roomCode, room);
   playerConnections.set(`left:${roomCode}`, ws);
+  // mark this connection as owner and persist to DB
+  ws._isOwner = true;
+  createRoomInDb(roomCode, 'left', room.getState());
+  // track clients set for broadcasting
+  roomClients.set(roomCode, new Set([ws]));
 
   ws.send(JSON.stringify({
     type: 'room-initialized',
@@ -212,6 +283,14 @@ function handleJoinRoom(ws, message) {
 
   playerConnections.set(`${side}:${roomCode}`, ws);
 
+  // add to broadcasting set
+  let clients = roomClients.get(roomCode);
+  if (!clients) {
+    clients = new Set();
+    roomClients.set(roomCode, clients);
+  }
+  clients.add(ws);
+
   ws.send(JSON.stringify({
     type: 'room-joined',
     roomCode,
@@ -244,6 +323,13 @@ function handleSpectateRoom(ws, message) {
   room.spectators.add(ws);
   playerConnections.set(`spectator-${Date.now()}:${roomCode}`, ws);
 
+  let clients = roomClients.get(roomCode);
+  if (!clients) {
+    clients = new Set();
+    roomClients.set(roomCode, clients);
+  }
+  clients.add(ws);
+
   ws.send(JSON.stringify({
     type: 'room-spectated',
     roomCode,
@@ -267,6 +353,13 @@ function handleUpdateState(ws, message) {
   }
 
   room.updateState(state);
+
+  // persist state to DB so other clients (and API) can read latest
+  try {
+    updateRoomStateInDb(roomCode, room.getState());
+  } catch (e) {
+    console.error('Failed to persist room state to DB', e);
+  }
 
   broadcastToRoom(roomCode, {
     type: 'state-updated',
@@ -323,13 +416,24 @@ app.get('/health', (req, res) => {
 
 // Server info endpoint
 app.get('/api/rooms', (req, res) => {
-  const roomList = Array.from(rooms.entries()).map(([code, room]) => ({
-    code,
-    hasLeft: !!room.leftPlayer,
-    hasRight: !!room.rightPlayer,
-    spectators: room.spectators.size,
-  }));
-  res.json({ rooms: roomList });
+  try {
+    const rows = listRoomsFromDb();
+    const roomList = rows.map(r => ({
+      code: r.code,
+      ownerSide: r.ownerSide,
+      createdAt: r.createdAt,
+      players: {
+        // best-effort from memory state
+        hasLeft: rooms.has(r.code) ? !!rooms.get(r.code).leftPlayer : false,
+        hasRight: rooms.has(r.code) ? !!rooms.get(r.code).rightPlayer : false,
+      },
+      spectators: rooms.has(r.code) ? rooms.get(r.code).spectators.size : 0,
+    }));
+    res.json({ rooms: roomList });
+  } catch (err) {
+    console.error('Failed to list rooms from DB', err);
+    res.status(500).json({ error: 'failed to list rooms' });
+  }
 });
 
 // Start server

@@ -1,19 +1,12 @@
-// ======================================
-// lib/storage.ts - WebSocket-based Storage
-// ======================================
+/**
+ * lib/api/storage.ts
+ * WebSocket-based storage API for game state management
+ */
+
 import { wsClient } from './websocket';
 import type { WSMessage } from './websocket';
+import type { GameState } from '@/app/types';
 
-export interface GameState {
-  currentPhase: number;
-  actionCount: number;
-  leftBans: number[];
-  rightBans: number[];
-  leftPicks: number[];
-  rightPicks: number[];
-}
-
-// Promise-based message handling for request-response pattern
 const waitForMessage = (type: string, timeout = 5000): Promise<WSMessage> => {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -29,10 +22,8 @@ const waitForMessage = (type: string, timeout = 5000): Promise<WSMessage> => {
   });
 };
 
-// Initialize room with default game state
 export const initializeRoom = async (roomCode: string): Promise<void> => {
   try {
-    // Ensure WebSocket is connected
     if (!wsClient.isConnected()) {
       await wsClient.connect();
     }
@@ -42,7 +33,6 @@ export const initializeRoom = async (roomCode: string): Promise<void> => {
       roomCode,
     });
 
-    // Wait for confirmation
     await waitForMessage('room-initialized');
     console.log(`Room ${roomCode} initialized`);
   } catch (err) {
@@ -51,7 +41,6 @@ export const initializeRoom = async (roomCode: string): Promise<void> => {
   }
 };
 
-// Load game state from storage
 export const loadGameState = async (roomCode: string): Promise<GameState | null> => {
   try {
     if (!wsClient.isConnected()) {
@@ -72,7 +61,6 @@ export const loadGameState = async (roomCode: string): Promise<GameState | null>
   }
 };
 
-// Save game state to storage
 export const saveGameState = async (roomCode: string, state: GameState): Promise<void> => {
   try {
     if (!wsClient.isConnected()) {
@@ -92,7 +80,6 @@ export const saveGameState = async (roomCode: string, state: GameState): Promise
   }
 };
 
-// Check room capacity
 export const checkRoomCapacity = async (roomCode: string): Promise<{ hasLeft: boolean; hasRight: boolean }> => {
   try {
     if (!wsClient.isConnected()) {
@@ -115,7 +102,6 @@ export const checkRoomCapacity = async (roomCode: string): Promise<{ hasLeft: bo
   }
 };
 
-// Register player in room
 export const registerPlayer = async (roomCode: string, side: 'left' | 'right'): Promise<boolean> => {
   try {
     if (!wsClient.isConnected()) {
@@ -132,6 +118,35 @@ export const registerPlayer = async (roomCode: string, side: 'left' | 'right'): 
     return response.type === 'room-joined';
   } catch (err) {
     console.error('Failed to register player:', err);
+    return false;
+  }
+};
+
+export const registerSpectator = async (roomCode: string): Promise<boolean> => {
+  try {
+    if (!wsClient.isConnected()) {
+      await wsClient.connect();
+    }
+
+    const promise = new Promise<unknown>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        unsubscribe();
+        reject(new Error('Timeout waiting for room-spectated'));
+      }, 5000);
+
+      const unsubscribe = wsClient.on('room-spectated', (message) => {
+        clearTimeout(timer);
+        unsubscribe();
+        resolve(message);
+      });
+    });
+
+    wsClient.send({ type: 'spectate-room', roomCode });
+
+    await promise;
+    return true;
+  } catch (err) {
+    console.error('Failed to register spectator:', err);
     return false;
   }
 };

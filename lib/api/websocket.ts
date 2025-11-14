@@ -1,6 +1,8 @@
-// ======================================
-// lib/websocket.ts - WebSocket Client
-// ======================================
+/**
+ * lib/api/websocket.ts
+ * WebSocket client for real-time communication with the backend server
+ */
+
 export type MessageType = 
   | 'init-room'
   | 'join-room'
@@ -35,7 +37,6 @@ class WebSocketClient {
   private isIntentionallyClosed = false;
 
   constructor() {
-    // Determine WebSocket URL. Prefer explicit env var `NEXT_PUBLIC_WS_URL`.
     const env = (typeof process !== 'undefined' && process.env) ? (process.env as unknown as Record<string, string | undefined>) : undefined;
     const envUrl = env ? env.NEXT_PUBLIC_WS_URL : undefined;
     if (envUrl) {
@@ -43,7 +44,6 @@ class WebSocketClient {
       return;
     }
 
-    // Default to backend running on port 3001 (separate from Next.js dev server)
     if (typeof window !== 'undefined') {
       const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
       const host = window.location.hostname;
@@ -100,7 +100,7 @@ class WebSocketClient {
 
     this.reconnectAttempts++;
     console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-    
+
     setTimeout(() => {
       this.connect().catch(err => {
         console.error('Reconnect failed:', err);
@@ -121,7 +121,6 @@ class WebSocketClient {
     }
     this.messageHandlers.get(type)!.push(handler);
 
-    // Return unsubscribe function
     return () => {
       const handlers = this.messageHandlers.get(type);
       if (handlers) {

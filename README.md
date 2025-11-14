@@ -1,33 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ER Pick Ban - Clean Code Structure
 
-## Getting Started
+Clean, organized Next.js app with proper feature-based architecture.
 
-First, run the development server:
+## 📁 Project Structure
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+app/
+├── types/
+│   └── index.ts                 ← Shared types
+├── components/
+│   ├── common/
+│   │   └── Header.tsx
+│   ├── menu/
+│   │   └── MenuContainer.tsx
+│   └── game/
+│       ├── GameRoomContainer.tsx
+│       ├── PhaseInfo.tsx
+│       ├── TeamPanel.tsx
+│       └── HeroGrid.tsx
+├── hooks/                       ← Ready for custom hooks
+├── page.tsx                     ← App entry point
+├── layout.tsx
+└── globals.css
+
+lib/
+├── api/
+│   ├── websocket.ts            ← WebSocket client
+│   └── storage.ts              ← Storage/API layer
+└── gameData.ts                 ← Game configuration
+
+server.mjs                       ← Node.js WebSocket server
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Quick Start
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Terminal 1: Start WebSocket Server
+```bash
+node server.mjs
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Terminal 2: Start Next.js Dev Server
+```bash
+pnpm dev
+```
 
-## Learn More
+Visit `http://localhost:3000`
 
-To learn more about Next.js, take a look at the following resources:
+## 📝 Key Files
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Purpose | Location |
+|---------|----------|
+| App entry point | `app/page.tsx` |
+| Type definitions | `app/types/index.ts` |
+| Game logic & state | `app/components/game/GameRoomContainer.tsx` |
+| Menu UI | `app/components/menu/MenuContainer.tsx` |
+| API calls | `lib/api/storage.ts` |
+| WebSocket client | `lib/api/websocket.ts` |
+| Game config | `lib/gameData.ts` |
+| Backend server | `server.mjs` |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## ✨ Features
+
+- ✅ Real-time WebSocket synchronization
+- ✅ Menu creation and room joining
+- ✅ Spectator mode
+- ✅ 10-second start countdown
+- ✅ 60-second per-action timer
+- ✅ Auto-advance with random hero selection
+- ✅ Hero search and filtering
+- ✅ Game state persistence
+- ✅ Multi-browser support
+
+## 📚 Documentation
+
+For detailed information, see:
+- **CODE_ORGANIZATION.md** - Complete usage guide
+- **STRUCTURE_GUIDE.md** - Visual guide and tips
+- **VERIFICATION_CHECKLIST.md** - Verification items
 
 ## Deploy on Vercel
 
